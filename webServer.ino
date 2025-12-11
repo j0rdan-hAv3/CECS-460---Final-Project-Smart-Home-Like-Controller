@@ -1,222 +1,64 @@
 #include <WiFi.h>
 #include <WebServer.h>
 
-// Configuration WiFi Access Point
+// Configuration WiFi
 const char* ap_ssid = "ESP32-LED-RGB";
 const char* ap_password = "12345678";
 
-// UART vers l'autre ESP32
+// UART
 #define RXD2 19
 #define TXD2 18
 
 WebServer server(80);
 
-// Structure RGB
-struct RGBData {
-  uint8_t red;
-  uint8_t green;
-  uint8_t blue;
-};
-
-RGBData rgbData = {0, 0, 0};
-
-// ----------- PAGE HTML AVEC COLOR PICKER -----------
+// HTML minifié et compressé
 const char webpage[] PROGMEM = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contrôle LED RGB</title>
-
-  <style>
-    body {
-      font-family: Arial;
-      text-align: center;
-      padding: 20px;
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      min-height: 100vh;
-      margin: 0;
-    }
-    .container {
-      background: white;
-      padding: 25px;
-      border-radius: 15px;
-      max-width: 420px;
-      margin: auto;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    }
-    input[type="color"] {
-      width: 100%;
-      height: 60px;
-      border: none;
-      margin-bottom: 20px;
-      cursor: pointer;
-      border-radius: 10px;
-    }
-    input[type="range"] {
-      width: 100%;
-    }
-    .preview {
-      width: 100%;
-      height: 100px;
-      border-radius: 10px;
-      border: 2px solid #ccc;
-      margin-bottom: 20px;
-    }
-    button {
-      background: #667eea;
-      color: white;
-      border: none;
-      padding: 12px 25px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 16px;
-      margin: 5px;
-    }
-    button:hover { background: #764ba2; }
-  </style>
-</head>
-
-<body>
-  <div class="container">
-    <h1>🎨 Contrôle LED RGB</h1>
-
-    <input type="color" id="colorPicker" value="#000000">
-
-    <div class="preview" id="preview"></div>
-
-    <label>🔴 Rouge: <span id="redValue">0</span></label>
-    <input type="range" id="redSlider" min="0" max="255" value="0">
-
-    <label>🟢 Vert: <span id="greenValue">0</span></label>
-    <input type="range" id="greenSlider" min="0" max="255" value="0">
-
-    <label>🔵 Bleu: <span id="blueValue">0</span></label>
-    <input type="range" id="blueSlider" min="0" max="255" value="0">
-
-    <button onclick="sendColor()">Envoyer Couleur</button>
-    <button onclick="turnOff()">Éteindre</button>
-  </div>
-
-<script>
-const r = document.getElementById('redSlider');
-const g = document.getElementById('greenSlider');
-const b = document.getElementById('blueSlider');
-const cp = document.getElementById('colorPicker');
-const preview = document.getElementById('preview');
-
-function rgbToHex(r,g,b) {
-  return "#" + 
-    Number(r).toString(16).padStart(2,'0') +
-    Number(g).toString(16).padStart(2,'0') +
-    Number(b).toString(16).padStart(2,'0');
-}
-
-function hexToRgb(hex) {
-  hex = hex.replace("#","");
-  return {
-    r: parseInt(hex.substring(0,2),16),
-    g: parseInt(hex.substring(2,4),16),
-    b: parseInt(hex.substring(4,6),16)
-  };
-}
-
-function updatePreview() {
-  document.getElementById("redValue").textContent = r.value;
-  document.getElementById("greenValue").textContent = g.value;
-  document.getElementById("blueValue").textContent = b.value;
-
-  preview.style.backgroundColor = `rgb(${r.value},${g.value},${b.value})`;
-
-  cp.value = rgbToHex(r.value, g.value, b.value);
-}
-
-r.oninput = updatePreview;
-g.oninput = updatePreview;
-b.oninput = updatePreview;
-
-cp.oninput = () => {
-  const c = hexToRgb(cp.value);
-  r.value = c.r;
-  g.value = c.g;
-  b.value = c.b;
-  updatePreview();
-};
-
-function sendColor() {
-  fetch(`/setColor?r=${r.value}&g=${g.value}&b=${b.value}`);
-}
-
-function turnOff() {
-  r.value = 0;
-  g.value = 0;
-  b.value = 0;
-  updatePreview();
-  fetch('/setColor?r=0&g=0&b=0');
-}
-
-updatePreview();
-</script>
-
-</body>
-</html>
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LED RGB</title><style>body{font-family:Arial;text-align:center;padding:20px;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;margin:0}.container{background:#fff;padding:25px;border-radius:15px;max-width:420px;margin:auto;box-shadow:0 10px 30px rgba(0,0,0,.3)}input[type=color]{width:100%;height:60px;border:none;margin-bottom:20px;cursor:pointer;border-radius:10px}input[type=range]{width:100%}.preview{width:100%;height:100px;border-radius:10px;border:2px solid #ccc;margin-bottom:20px}button{background:#667eea;color:#fff;border:none;padding:12px 25px;border-radius:20px;cursor:pointer;font-size:16px;margin:5px}button:hover{background:#764ba2}</style></head><body><div class="container"><h1>🎨 LED RGB</h1><input type="color" id="c" value="#000000"><div class="preview" id="p"></div><label>🔴 Rouge: <span id="rv">0</span></label><input type="range" id="r" min="0" max="255" value="0"><label>🟢 Vert: <span id="gv">0</span></label><input type="range" id="g" min="0" max="255" value="0"><label>🔵 Bleu: <span id="bv">0</span></label><input type="range" id="b" min="0" max="255" value="0"><button onclick="s()">Envoyer</button><button onclick="o()">Éteindre</button></div><script>const r=document.getElementById('r'),g=document.getElementById('g'),b=document.getElementById('b'),c=document.getElementById('c'),p=document.getElementById('p');function h2r(h){h=h.replace("#","");return{r:parseInt(h.substring(0,2),16),g:parseInt(h.substring(2,4),16),b:parseInt(h.substring(4,6),16)}}function u(){document.getElementById("rv").textContent=r.value;document.getElementById("gv").textContent=g.value;document.getElementById("bv").textContent=b.value;p.style.backgroundColor='rgb('+r.value+','+g.value+','+b.value+')';c.value="#"+Number(r.value).toString(16).padStart(2,'0')+Number(g.value).toString(16).padStart(2,'0')+Number(b.value).toString(16).padStart(2,'0')}r.oninput=g.oninput=b.oninput=u;c.oninput=()=>{const x=h2r(c.value);r.value=x.r;g.value=x.g;b.value=x.b;u()};function s(){fetch('/s?r='+r.value+'&g='+g.value+'&b='+b.value)}function o(){r.value=g.value=b.value=0;u();fetch('/s?r=0&g=0&b=0')}u()</script></body></html>
 )rawliteral";
 
-// ---------- ROUTES SERVEUR ----------
 void handleRoot() {
-  server.send(200, "text/html", webpage);
+  server.send_P(200, "text/html", webpage);
 }
 
 void handleSetColor() {
   if (server.hasArg("r") && server.hasArg("g") && server.hasArg("b")) {
+    uint8_t rv = server.arg("r").toInt();
+    uint8_t gv = server.arg("g").toInt();
+    uint8_t bv = server.arg("b").toInt();
 
-    rgbData.red = server.arg("r").toInt();
-    rgbData.green = server.arg("g").toInt();
-    rgbData.blue = server.arg("b").toInt();
+    // ENVOI UART PRIORITAIRE - AVANT la réponse HTTP
+    uint8_t data[] = {'S', rv, gv, bv, 'E'};
+    Serial2.write(data, 5);
+    Serial2.flush(); // Force l'envoi immédiat
 
-    Serial2.write('S');
-    Serial2.write(rgbData.red);
-    Serial2.write(rgbData.green);
-    Serial2.write(rgbData.blue);
-    Serial2.write('E');
-
-    Serial.printf("Couleur envoyée : R=%d G=%d B=%d\n",
-                   rgbData.red, rgbData.green, rgbData.blue);
-
-    server.send(200, "text/plain", "OK");
-  }
-  else {
-    server.send(400, "text/plain", "Paramètres manquants");
+    // Réponse HTTP minimale
+    server.send(200, "text/plain", "");
+  } else {
+    server.send(400, "text/plain", "");
   }
 }
 
-// ---------- SETUP ----------
 void setup() {
   Serial.begin(115200);
-  delay(300);
-
-  Serial.println("=== ESP32 Serveur Web ===");
-
   Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
-  Serial.println("UART Serial2 OK");
+  Serial2.setRxBufferSize(256); // Buffer minimal
+  Serial2.setTxBufferSize(256);
 
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ap_ssid, ap_password);
 
-  Serial.print("WiFi AP : ");
-  Serial.println(ap_ssid);
-  Serial.print("IP : ");
-  Serial.println(WiFi.softAPIP());
+  // Désactiver le sleep mode WiFi pour réactivité maximale
+  WiFi.setSleep(false);
 
   server.on("/", handleRoot);
-  server.on("/setColor", handleSetColor);
+  server.on("/s", handleSetColor);
   server.begin();
 
-  Serial.println("Serveur Web démarré !");
+  Serial.println("Ready");
+  Serial.println(WiFi.softAPIP());
 }
 
-// ---------- LOOP ----------
 void loop() {
   server.handleClient();
+  yield(); // Permet au WiFi de respirer sans bloquer
 }
