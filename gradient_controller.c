@@ -1,28 +1,32 @@
-// Pins pour la LED RGB
+// FR: Pins pour la LED RGB
+// EN: LED RGB pins
 #define RED_PIN 25
 #define GREEN_PIN 26
 #define BLUE_PIN 27
 
-// Communication série
+// FR: Communication série
+// EN: UART RX and TX definitions
 #define RXD2 19
 #define TXD2 18
 
-// Structure pour une étape de couleur
+// FR: Structure pour une étape de couleur
+// EN: structure for the color stage
 struct ColorStep {
   uint8_t r, g, b;
-  float duration;  // en secondes
+  float duration;  // en secondes (seconds)
 };
 
-ColorStep steps[10];  // Max 10 couleurs
+ColorStep steps[10];  // Max 10 couleurs (max 10 colors)
 int stepCount = 0;
 int currentStep = 0;
 int nextStep = 0;
 bool gradientActive = false;
 
 unsigned long lastUpdate = 0;
-float progress = 0;  // 0.0 à 1.0
+float progress = 0;  // 0.0 à 1.0 (0.0 to 1.0)
 
-// Couleurs actuelles (interpolées)
+// FR: Couleurs actuelles (interpolées)
+// EN: actual colors using interpolation
 float currentR = 0, currentG = 0, currentB = 0;
 
 void setRGBColor(uint8_t r, uint8_t g, uint8_t b) {
@@ -31,12 +35,14 @@ void setRGBColor(uint8_t r, uint8_t g, uint8_t b) {
   analogWrite(BLUE_PIN, b);
 }
 
-// Interpolation linéaire entre deux valeurs
+// FR: Interpolation linéaire entre deux valeurs
+// EN: Linear interpolation for between both colors
 float interpolate(float a, float b, float t) {
   return a + (b - a) * t;
 }
 
-// Fonction d'easing pour une transition plus douce (ease-in-out)
+// FR: Fonction d'easing pour une transition plus douce (ease-in-out)
+// EN: Easing function for a smoother transition
 float easeInOutCubic(float t) {
   return t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2;
 }
@@ -45,16 +51,19 @@ void updateGradient() {
   if (!gradientActive || stepCount < 2) return;
   
   unsigned long now = millis();
-  float deltaTime = (now - lastUpdate) / 1000.0;  // en secondes
+  float deltaTime = (now - lastUpdate) / 1000.0;  // en secondes (seconds)
   lastUpdate = now;
   
-  // Durée de la transition actuelle
+  // FR: Durée de la transition actuelle
+  // EN: Actual transition duration
   float transitionDuration = steps[currentStep].duration;
   
-  // Avancer dans la transition
+  // FR: Avancer dans la transition
+  // EN: Advance to next transition
   progress += deltaTime / transitionDuration;
   
-  // Si on a fini cette transition, passer à la suivante
+  // FR: Si on a fini cette transition, passer à la suivante
+  // EN: If on final transition, go to next one
   if (progress >= 1.0) {
     progress = 0.0;
     currentStep = nextStep;
@@ -64,19 +73,23 @@ void updateGradient() {
     Serial.println(nextStep + 1);
   }
   
-  // Appliquer easing pour une transition plus douce
+  // FR: Appliquer easing pour une transition plus douce
+  // EN: Apply more easing for more transition
   float easedProgress = easeInOutCubic(progress);
   
-  // Interpoler entre la couleur actuelle et la suivante
+  // FR: Interpoler entre la couleur actuelle et la suivante
+  // EN: Interpolate the entire color from current to next
   currentR = interpolate(steps[currentStep].r, steps[nextStep].r, easedProgress);
   currentG = interpolate(steps[currentStep].g, steps[nextStep].g, easedProgress);
   currentB = interpolate(steps[currentStep].b, steps[nextStep].b, easedProgress);
   
-  // Appliquer la couleur
+  // FR: Appliquer la couleur
+  // EN: Apply the color
   setRGBColor((uint8_t)currentR, (uint8_t)currentG, (uint8_t)currentB);
 }
 
-// Parser simple pour extraire les valeurs du JSON
+// FR: Parser simple pour extraire les valeurs du JSON
+// EN: A simple parser to extract values ​​from JSON
 int findValue(String json, String key, int startPos) {
   int pos = json.indexOf(key, startPos);
   if (pos == -1) return -1;
@@ -84,18 +97,21 @@ int findValue(String json, String key, int startPos) {
   pos = json.indexOf(':', pos);
   if (pos == -1) return -1;
   
-  // Trouver le début du nombre
+  // FR: Trouver le début du nombre
+  // EN: Find starting number
   pos++;
   while (pos < json.length() && (json[pos] == ' ' || json[pos] == '"')) pos++;
   
-  // Extraire le nombre
+  // FR: Extraire le nombre
+  // EN: Extract the number
   String numStr = "";
   while (pos < json.length() && (isdigit(json[pos]) || json[pos] == '.')) {
     numStr += json[pos];
     pos++;
   }
-  
-  return pos;  // Retourne la position pour continuer la recherche
+  // FR: Retourne la position pour continuer la recherche
+  // EN: Returns the position to continue the search
+  return pos; 
 }
 
 float extractFloat(String json, String key, int startPos) {
@@ -134,7 +150,8 @@ void parseGradientConfig(String json) {
   Serial.println("Parsing configuration:");
   Serial.println(json);
   
-  // Compter le nombre d'objets dans steps
+  // FR: Compter le nombre d'objets dans steps
+  // EN: Compute the number of objects in steps
   stepCount = 0;
   int pos = 0;
   while (pos < json.length() && stepCount < 10) {
@@ -167,7 +184,8 @@ void parseGradientConfig(String json) {
   Serial.println(" couleurs configurées");
   
   if (stepCount >= 2) {
-    // Démarrer le gradient
+    // FR: Démarrer le gradient
+    // EN: Start the gradient
     currentStep = 0;
     nextStep = 1;
     progress = 0;
@@ -186,7 +204,8 @@ void setup() {
   
   Serial.println("\n=== ESP32 Client LED RGB - Mode Gradient ===");
   
-  // Configuration des pins LED
+  // FR: Configuration des pins LED
+  // EN: Configure LED pins
   pinMode(RED_PIN, OUTPUT);
   pinMode(GREEN_PIN, OUTPUT);
   pinMode(BLUE_PIN, OUTPUT);
@@ -217,8 +236,8 @@ void loop() {
     char cmd = Serial2.read();
     
     if (cmd == 'G') {
-      // Mode Gradient - recevoir la configuration JSON
-      delay(10);  // Attendre que toutes les données arrivent
+      // Mode Gradient - recevoir/receive la configuration JSON
+      delay(10);  // Attendre que toutes les données arrivent (Wait for all the data to arrive.)
       
       if (Serial2.available() >= 2) {
         int len = (Serial2.read() << 8) | Serial2.read();
@@ -246,14 +265,16 @@ void loop() {
       }
     }
     else if (cmd == 'X') {
-      // Arrêter le gradient
+      // FR: Arrêter le gradient
+      // EN: Stop the gradient
       gradientActive = false;
       setRGBColor(0, 0, 0);
       Serial.println("Gradient arrêté\n");
     }
   }
   
-  // Mettre à jour le gradient si actif
+  // FR: Mettre à jour le gradient si actif
+  // EN: Update if gradient is active
   if (gradientActive) {
     updateGradient();
   }
