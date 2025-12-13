@@ -5,13 +5,15 @@
 const char* ap_ssid = "ESP32-LED-RGB";
 const char* ap_password = "12345678";
 
-// UART vers l'autre ESP32
+// FR: UART vers l'autre ESP32
+// EN: UART to other ESP32
 #define RXD2 19
 #define TXD2 18
 
 WebServer server(80);
 
-// Page HTML avec gradient de couleurs
+// FR: Page HTML avec gradient de couleurs
+// EN: HTML Page to control gradient colors
 const char webpage[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
@@ -361,7 +363,8 @@ void handleStartGradient() {
   if (server.method() == HTTP_POST) {
     String body = server.arg("plain");
     
-    // Envoyer la commande START au client
+    // FR: Envoyer la commande START au client
+    // EN: Send START command to client
     Serial2.write('G');  // Mode Gradient
     Serial2.write((uint8_t)(body.length() >> 8));
     Serial2.write((uint8_t)(body.length() & 0xFF));
@@ -375,7 +378,8 @@ void handleStartGradient() {
 }
 
 void handleStopGradient() {
-  // Envoyer la commande STOP
+  // FR: Envoyer la commande STOP
+  // EN: Send STOP command
   Serial2.write('X');  // Stop
   
   Serial.println("Gradient arrêté");
